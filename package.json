@@ -1,0 +1,17 @@
+{
+  "name": "sttttsmodels",
+  "version": "1.0.0",
+  "description": "Bundled HuggingFace STT (whisper-base) and TTS (pocket-tts-onnx) model files",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node download.js"
+  },
+  "keywords": ["whisper", "stt", "tts", "onnx", "speech", "models", "huggingface"],
+  "author": "lanmower",
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "download.js",
+    "models/"
+  ]
+}

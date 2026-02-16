@@ -1,0 +1,25 @@
+name: Publish to npm
+on:
+  push:
+    branches: [main]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - run: |
+          CURRENT=$(npm view sttttsmodels version 2>/dev/null || echo "0.0.0")
+          LOCAL=$(node -p "require('./package.json').version")
+          if [ "$CURRENT" = "$LOCAL" ]; then
+            IFS='.' read -r major minor patch <<< "$LOCAL"
+            patch=$((patch + 1))
+            NEW="$major.$minor.$patch"
+            npm version "$NEW" --no-git-tag-version
+          fi
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
