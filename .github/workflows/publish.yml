@@ -8,10 +8,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+      - run: git lfs pull
       - run: |
           CURRENT=$(npm view sttttsmodels version 2>/dev/null || echo "0.0.0")
           LOCAL=$(node -p "require('./package.json').version")
