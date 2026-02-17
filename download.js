@@ -32,9 +32,8 @@ const TTS_FILES = [
   'tokenizer.model'
 ];
 
-const SPEAKER_EMBEDDING_MODEL = 'speechbrain/spkrec-xvect-voxceleb';
-const SPEAKER_EMBEDDING_PREFIX = 'models/speaker/';
-const SPEAKER_EMBEDDING_FILES = [
+const SPEAKER_PREFIX = 'models/speaker/';
+const SPEAKER_FILES = [
   'embedding_model.ckpt',
   'classifier.ckpt',
   'mean_var_norm_emb.ckpt',
@@ -110,12 +109,11 @@ async function main() {
     await download(BASE + TTS_PREFIX + file, dest);
   }
 
-  console.log('[sttttsmodels] downloading speaker embedding model from HuggingFace...');
-  for (const file of SPEAKER_EMBEDDING_FILES) {
+  console.log('[sttttsmodels] downloading speaker embedding model from GitHub...');
+  for (const file of SPEAKER_FILES) {
     const dest = path.join(speakerDir, file);
     if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
-    const hfUrl = `https://huggingface.co/${SPEAKER_EMBEDDING_MODEL}/resolve/main/${file}`;
-    await download(hfUrl, dest);
+    await download(BASE + SPEAKER_PREFIX + file, dest);
   }
 
   console.log('[sttttsmodels] all models ready.');
