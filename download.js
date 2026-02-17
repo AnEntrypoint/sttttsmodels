@@ -32,6 +32,15 @@ const TTS_FILES = [
   'tokenizer.model'
 ];
 
+const SPEAKER_EMBEDDING_MODEL = 'speechbrain/spkrec-xvect-voxceleb';
+const SPEAKER_EMBEDDING_PREFIX = 'models/speaker/';
+const SPEAKER_EMBEDDING_FILES = [
+  'embedding_model.ckpt',
+  'classifier.ckpt',
+  'mean_var_norm_emb.ckpt',
+  'hyperparams.yaml'
+];
+
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
@@ -85,6 +94,7 @@ function download(url, dest, retries = 3, attempt = 0) {
 async function main() {
   const sttDir = path.join(MODELS_DIR, 'stt', STT_MODEL);
   const ttsDir = path.join(MODELS_DIR, 'tts');
+  const speakerDir = path.join(MODELS_DIR, 'speaker');
 
   console.log('[sttttsmodels] downloading STT models from GitHub...');
   for (const file of STT_FILES) {
@@ -98,6 +108,14 @@ async function main() {
     const dest = path.join(ttsDir, file);
     if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
     await download(BASE + TTS_PREFIX + file, dest);
+  }
+
+  console.log('[sttttsmodels] downloading speaker embedding model from HuggingFace...');
+  for (const file of SPEAKER_EMBEDDING_FILES) {
+    const dest = path.join(speakerDir, file);
+    if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
+    const hfUrl = `https://huggingface.co/${SPEAKER_EMBEDDING_MODEL}/resolve/main/${file}`;
+    await download(hfUrl, dest);
   }
 
   console.log('[sttttsmodels] all models ready.');
