@@ -36,20 +36,17 @@ function ensureDir(dir) {
 function download(url, dest, retries = 3, attempt = 0) {
   return new Promise((resolve, reject) => {
     ensureDir(path.dirname(dest));
-    const file = fs.createWriteStream(dest);
     const get = (u) => {
       https.get(u, (res) => {
         if ([301, 302, 307, 308].includes(res.statusCode)) {
-          file.close();
-          fs.existsSync(dest) && fs.unlinkSync(dest);
+          res.resume();
           const location = res.headers.location;
           const next = location.startsWith('http') ? location : new URL(location, u).href;
           get(next);
           return;
         }
         if (res.statusCode !== 200) {
-          file.close();
-          fs.existsSync(dest) && fs.unlinkSync(dest);
+          res.resume();
           if (attempt < retries - 1) {
             setTimeout(() => download(url, dest, retries, attempt + 1).then(resolve).catch(reject), Math.pow(2, attempt) * 1000);
           } else {
@@ -57,6 +54,7 @@ function download(url, dest, retries = 3, attempt = 0) {
           }
           return;
         }
+        const file = fs.createWriteStream(dest);
         let bytes = 0;
         res.on('data', (chunk) => {
           bytes += chunk.length;
@@ -64,8 +62,11 @@ function download(url, dest, retries = 3, attempt = 0) {
         });
         res.pipe(file);
         file.on('finish', () => { file.close(); process.stdout.write(' done\n'); resolve(); });
+        file.on('error', (err) => {
+          fs.existsSync(dest) && fs.unlinkSync(dest);
+          reject(err);
+        });
       }).on('error', (err) => {
-        file.close();
         fs.existsSync(dest) && fs.unlinkSync(dest);
         if (attempt < retries - 1) {
           setTimeout(() => download(url, dest, retries, attempt + 1).then(resolve).catch(reject), Math.pow(2, attempt) * 1000);
