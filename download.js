@@ -18,14 +18,14 @@ const STT_FILES = [
   'onnx/decoder_model_merged.onnx'
 ];
 
-const TTS_BASE = 'https://huggingface.co/KevinAHM/pocket-tts-onnx/resolve/main/onnx/';
+const TTS_REPO = 'https://huggingface.co/KevinAHM/pocket-tts-onnx/resolve/main/';
 const TTS_FILES = [
-  'mimi_encoder.onnx',
-  'text_conditioner.onnx',
-  'flow_lm_main_int8.onnx',
-  'flow_lm_flow_int8.onnx',
-  'mimi_decoder_int8.onnx',
-  'tokenizer.model'
+  { name: 'mimi_encoder.onnx', path: 'onnx/mimi_encoder.onnx' },
+  { name: 'text_conditioner.onnx', path: 'onnx/text_conditioner.onnx' },
+  { name: 'flow_lm_main_int8.onnx', path: 'onnx/flow_lm_main_int8.onnx' },
+  { name: 'flow_lm_flow_int8.onnx', path: 'onnx/flow_lm_flow_int8.onnx' },
+  { name: 'mimi_decoder_int8.onnx', path: 'onnx/mimi_decoder_int8.onnx' },
+  { name: 'tokenizer.model', path: 'tokenizer.model' }
 ];
 
 function ensureDir(dir) {
@@ -91,9 +91,9 @@ async function main() {
 
   console.log('[sttttsmodels] downloading TTS models (pocket-tts-onnx)...');
   for (const file of TTS_FILES) {
-    const dest = path.join(ttsDir, file);
+    const dest = path.join(ttsDir, file.name);
     if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
-    await download(TTS_BASE + file, dest);
+    await download(TTS_REPO + file.path, dest);
   }
 
   console.log('[sttttsmodels] all models ready.');
