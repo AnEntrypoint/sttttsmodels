@@ -42,7 +42,9 @@ function download(url, dest, retries = 3, attempt = 0) {
         if ([301, 302, 307, 308].includes(res.statusCode)) {
           file.close();
           fs.existsSync(dest) && fs.unlinkSync(dest);
-          get(res.headers.location);
+          const location = res.headers.location;
+          const next = location.startsWith('http') ? location : new URL(location, u).href;
+          get(next);
           return;
         }
         if (res.statusCode !== 200) {
