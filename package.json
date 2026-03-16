@@ -1,6 +1,6 @@
 {
   "name": "sttttsmodels",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "STT (whisper-base), TTS (pocket-tts-onnx), and speaker embedding model files",
   "main": "index.js",
   "scripts": {
