@@ -3,7 +3,6 @@ const path = require('path');
 const https = require('https');
 
 const MODELS_DIR = path.join(__dirname, 'models');
-const { qwenDir: QWEN_DIR_FROM_INDEX } = require('./index.js');
 
 const REPO = 'AnEntrypoint/sttttsmodels';
 const BRANCH = 'main';
@@ -41,8 +40,7 @@ const SPEAKER_FILES = [
   'hyperparams.yaml'
 ];
 
-const QWEN_MODEL = 'onnx-community/Qwen3.5-0.8B-ONNX';
-const QWEN_HF_BASE = `https://huggingface.co/${QWEN_MODEL}/resolve/main`;
+const QWEN_PREFIX = 'models/qwen/onnx-community/Qwen3.5-0.8B-ONNX/';
 const QWEN_FILES = [
   'config.json',
   'generation_config.json',
@@ -53,6 +51,10 @@ const QWEN_FILES = [
   'onnx/decoder_model_merged_q4.onnx',
   'onnx/decoder_model_merged_q4.onnx_data',
 ];
+const QWEN_CHUNKED_FILES = {
+  'onnx/embed_tokens_q4.onnx_data': ['partaa', 'partab'],
+  'onnx/decoder_model_merged_q4.onnx_data': ['partaa', 'partab', 'partac', 'partad', 'partae', 'partaf'],
+};
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -130,11 +132,25 @@ async function main() {
     await download(BASE + SPEAKER_PREFIX + file, dest);
   }
 
-  console.log('[sttttsmodels] downloading Qwen3.5-0.8B-ONNX from HuggingFace...');
+  console.log('[sttttsmodels] downloading Qwen3.5-0.8B-ONNX from GitHub...');
+  const qwenDir = path.join(MODELS_DIR, 'qwen', 'onnx-community', 'Qwen3.5-0.8B-ONNX');
   for (const file of QWEN_FILES) {
-    const dest = path.join(QWEN_DIR_FROM_INDEX, file);
+    const dest = path.join(qwenDir, file);
     if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
-    await download(`${QWEN_HF_BASE}/${file}`, dest);
+    const parts = QWEN_CHUNKED_FILES[file];
+    if (parts) {
+      ensureDir(path.dirname(dest));
+      if (fs.existsSync(dest)) fs.unlinkSync(dest);
+      for (const part of parts) {
+        const chunkDest = dest + '.' + part;
+        await download(BASE + QWEN_PREFIX + file + '.' + part, chunkDest);
+        fs.appendFileSync(dest, fs.readFileSync(chunkDest));
+        fs.unlinkSync(chunkDest);
+      }
+      process.stdout.write(`  ${path.basename(dest)} assembled\n`);
+    } else {
+      await download(BASE + QWEN_PREFIX + file, dest);
+    }
   }
 
   console.log('[sttttsmodels] all models ready.');
