@@ -48,10 +48,10 @@ const QWEN_FILES = [
   'generation_config.json',
   'tokenizer.json',
   'tokenizer_config.json',
-  'onnx/decoder_model_merged_q4f16.onnx',
-  'onnx/decoder_model_merged_q4f16.onnx_data',
-  'onnx/embed_tokens_q4f16.onnx',
-  'onnx/embed_tokens_q4f16.onnx_data',
+  'onnx/embed_tokens_q4.onnx',
+  'onnx/embed_tokens_q4.onnx_data',
+  'onnx/decoder_model_merged_q4.onnx',
+  'onnx/decoder_model_merged_q4.onnx_data',
 ];
 
 function ensureDir(dir) {
