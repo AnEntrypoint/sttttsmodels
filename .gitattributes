@@ -1,3 +1,6 @@
 *.onnx filter=lfs diff=lfs merge=lfs -text
+*.onnx_data filter=lfs diff=lfs merge=lfs -text
 *.model filter=lfs diff=lfs merge=lfs -text
 *.ckpt filter=lfs diff=lfs merge=lfs -text
+models/qwen/**/*.onnx !filter !diff !merge
+models/qwen/**/*.onnx_data !filter !diff !merge
