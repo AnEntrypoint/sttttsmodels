@@ -3,6 +3,7 @@ const path = require('path');
 const https = require('https');
 
 const MODELS_DIR = path.join(__dirname, 'models');
+const { qwenDir: QWEN_DIR_FROM_INDEX } = require('./index.js');
 
 const REPO = 'AnEntrypoint/sttttsmodels';
 const BRANCH = 'main';
@@ -38,6 +39,19 @@ const SPEAKER_FILES = [
   'classifier.ckpt',
   'mean_var_norm_emb.ckpt',
   'hyperparams.yaml'
+];
+
+const QWEN_MODEL = 'onnx-community/Qwen3.5-0.8B-ONNX';
+const QWEN_HF_BASE = `https://huggingface.co/${QWEN_MODEL}/resolve/main`;
+const QWEN_FILES = [
+  'config.json',
+  'generation_config.json',
+  'tokenizer.json',
+  'tokenizer_config.json',
+  'onnx/embed_tokens_q4.onnx',
+  'onnx/embed_tokens_q4.onnx_data',
+  'onnx/decoder_model_merged_q4.onnx',
+  'onnx/decoder_model_merged_q4.onnx_data',
 ];
 
 function ensureDir(dir) {
@@ -114,6 +128,13 @@ async function main() {
     const dest = path.join(speakerDir, file);
     if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
     await download(BASE + SPEAKER_PREFIX + file, dest);
+  }
+
+  console.log('[sttttsmodels] downloading Qwen3.5-0.8B-ONNX from HuggingFace...');
+  for (const file of QWEN_FILES) {
+    const dest = path.join(QWEN_DIR_FROM_INDEX, file);
+    if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
+    await download(`${QWEN_HF_BASE}/${file}`, dest);
   }
 
   console.log('[sttttsmodels] all models ready.');
