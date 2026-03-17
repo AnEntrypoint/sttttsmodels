@@ -1,19 +1,41 @@
 const path = require('path');
 
 const MODELS_DIR = path.join(__dirname, 'models');
-const STT_MODEL_ID = 'onnx-community/whisper-base';
-const STT_DIR = path.join(MODELS_DIR, 'stt', STT_MODEL_ID);
-const TTS_DIR = path.join(MODELS_DIR, 'tts');
-const SPEAKER_DIR = path.join(MODELS_DIR, 'speaker');
-const QWEN_MODEL_ID = 'onnx-community/Qwen3.5-0.8B-ONNX';
-const QWEN_DIR = path.join(MODELS_DIR, 'qwen', QWEN_MODEL_ID);
+
+const MODELS = {
+  stt: {
+    modelId: 'onnx-community/whisper-base',
+    dir: path.join(MODELS_DIR, 'stt', 'onnx-community/whisper-base'),
+    files: ['config.json','preprocessor_config.json','tokenizer.json','tokenizer_config.json','vocab.json','merges.txt','onnx/encoder_model.onnx','onnx/decoder_model_merged_q4.onnx','onnx/decoder_model_merged.onnx'],
+  },
+  tts: {
+    modelId: 'pocket-tts-onnx',
+    dir: path.join(MODELS_DIR, 'tts'),
+    files: ['mimi_encoder.onnx','text_conditioner.onnx','flow_lm_main_int8.onnx','flow_lm_flow_int8.onnx','mimi_decoder_int8.onnx','tokenizer.model'],
+  },
+  speaker: {
+    modelId: 'speaker-embedding',
+    dir: path.join(MODELS_DIR, 'speaker'),
+    files: ['embedding_model.ckpt','classifier.ckpt','mean_var_norm_emb.ckpt','hyperparams.yaml'],
+  },
+  qwen: {
+    modelId: 'onnx-community/Qwen3.5-0.8B-ONNX',
+    dir: path.join(MODELS_DIR, 'qwen', 'onnx-community/Qwen3.5-0.8B-ONNX'),
+    files: ['config.json','generation_config.json','tokenizer.json','tokenizer_config.json','onnx/embed_tokens_q4.onnx','onnx/embed_tokens_q4.onnx_data','onnx/decoder_model_merged_q4.onnx','onnx/decoder_model_merged_q4.onnx_data'],
+  },
+};
 
 module.exports = {
-  sttDir: STT_DIR,
-  ttsDir: TTS_DIR,
-  speakerDir: SPEAKER_DIR,
   modelsDir: MODELS_DIR,
-  sttModelId: STT_MODEL_ID,
-  qwenModelId: QWEN_MODEL_ID,
-  qwenDir: QWEN_DIR,
+  models: MODELS,
+  stt: MODELS.stt,
+  tts: MODELS.tts,
+  speaker: MODELS.speaker,
+  qwen: MODELS.qwen,
+  sttDir: MODELS.stt.dir,
+  ttsDir: MODELS.tts.dir,
+  speakerDir: MODELS.speaker.dir,
+  qwenDir: MODELS.qwen.dir,
+  sttModelId: MODELS.stt.modelId,
+  qwenModelId: MODELS.qwen.modelId,
 };
