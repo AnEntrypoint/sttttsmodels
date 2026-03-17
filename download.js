@@ -3,57 +3,35 @@ const path = require('path');
 const https = require('https');
 
 const MODELS_DIR = path.join(__dirname, 'models');
-
 const REPO = 'AnEntrypoint/sttttsmodels';
 const BRANCH = 'main';
 const BASE = `https://github.com/${REPO}/raw/${BRANCH}/`;
 
-const STT_MODEL = 'onnx-community/whisper-base';
-const STT_PREFIX = `models/stt/${STT_MODEL}/`;
-const STT_FILES = [
-  'config.json',
-  'preprocessor_config.json',
-  'tokenizer.json',
-  'tokenizer_config.json',
-  'vocab.json',
-  'merges.txt',
-  'onnx/encoder_model.onnx',
-  'onnx/decoder_model_merged_q4.onnx',
-  'onnx/decoder_model_merged.onnx'
-];
-
-const TTS_PREFIX = 'models/tts/';
-const TTS_FILES = [
-  'mimi_encoder.onnx',
-  'text_conditioner.onnx',
-  'flow_lm_main_int8.onnx',
-  'flow_lm_flow_int8.onnx',
-  'mimi_decoder_int8.onnx',
-  'tokenizer.model'
-];
-
-const SPEAKER_PREFIX = 'models/speaker/';
-const SPEAKER_FILES = [
-  'embedding_model.ckpt',
-  'classifier.ckpt',
-  'mean_var_norm_emb.ckpt',
-  'hyperparams.yaml'
-];
-
-const QWEN_PREFIX = 'models/qwen/onnx-community/Qwen3.5-0.8B-ONNX/';
-const QWEN_FILES = [
-  'config.json',
-  'generation_config.json',
-  'tokenizer.json',
-  'tokenizer_config.json',
-  'onnx/embed_tokens_q4.onnx',
-  'onnx/embed_tokens_q4.onnx_data',
-  'onnx/decoder_model_merged_q4.onnx',
-  'onnx/decoder_model_merged_q4.onnx_data',
-];
-const QWEN_CHUNKED_FILES = {
-  'onnx/embed_tokens_q4.onnx_data': ['partaa', 'partab'],
-  'onnx/decoder_model_merged_q4.onnx_data': ['partaa', 'partab', 'partac', 'partad', 'partae', 'partaf'],
+const MODEL_GROUPS = {
+  stt: {
+    prefix: 'models/stt/onnx-community/whisper-base/',
+    dir: path.join(MODELS_DIR, 'stt/onnx-community/whisper-base'),
+    files: ['config.json','preprocessor_config.json','tokenizer.json','tokenizer_config.json','vocab.json','merges.txt','onnx/encoder_model.onnx','onnx/decoder_model_merged_q4.onnx','onnx/decoder_model_merged.onnx'],
+  },
+  tts: {
+    prefix: 'models/tts/',
+    dir: path.join(MODELS_DIR, 'tts'),
+    files: ['mimi_encoder.onnx','text_conditioner.onnx','flow_lm_main_int8.onnx','flow_lm_flow_int8.onnx','mimi_decoder_int8.onnx','tokenizer.model'],
+  },
+  speaker: {
+    prefix: 'models/speaker/',
+    dir: path.join(MODELS_DIR, 'speaker'),
+    files: ['embedding_model.ckpt','classifier.ckpt','mean_var_norm_emb.ckpt','hyperparams.yaml'],
+  },
+  qwen: {
+    prefix: 'models/qwen/onnx-community/Qwen3.5-0.8B-ONNX/',
+    dir: path.join(MODELS_DIR, 'qwen/onnx-community/Qwen3.5-0.8B-ONNX'),
+    files: ['config.json','generation_config.json','tokenizer.json','tokenizer_config.json','onnx/embed_tokens_q4.onnx','onnx/embed_tokens_q4.onnx_data','onnx/decoder_model_merged_q4.onnx','onnx/decoder_model_merged_q4.onnx_data'],
+    chunked: {
+      'onnx/embed_tokens_q4.onnx_data': ['partaa','partab'],
+      'onnx/decoder_model_merged_q4.onnx_data': ['partaa','partab','partac','partad','partae','partaf'],
+    },
+  },
 };
 
 function ensureDir(dir) {
@@ -67,92 +45,89 @@ function download(url, dest, retries = 3, attempt = 0) {
       https.get(u, (res) => {
         if ([301, 302, 307, 308].includes(res.statusCode)) {
           res.resume();
-          const location = res.headers.location;
-          const next = location.startsWith('http') ? location : new URL(location, u).href;
-          get(next);
-          return;
+          const next = res.headers.location.startsWith('http') ? res.headers.location : new URL(res.headers.location, u).href;
+          return get(next);
         }
         if (res.statusCode !== 200) {
           res.resume();
-          if (attempt < retries - 1) {
-            setTimeout(() => download(url, dest, retries, attempt + 1).then(resolve).catch(reject), Math.pow(2, attempt) * 1000);
-          } else {
-            reject(new Error(`HTTP ${res.statusCode} for ${url}`));
-          }
-          return;
+          if (attempt < retries - 1) return setTimeout(() => download(url, dest, retries, attempt + 1).then(resolve).catch(reject), Math.pow(2, attempt) * 1000);
+          return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
         }
         const file = fs.createWriteStream(dest);
-        let bytes = 0;
+        let bytes = 0, total = parseInt(res.headers['content-length'] || '0', 10);
         res.on('data', (chunk) => {
           bytes += chunk.length;
-          process.stdout.write(`\r  ${path.basename(dest)} ${(bytes / 1024 / 1024).toFixed(1)}MB`);
+          const pct = total ? ` (${Math.round(bytes/total*100)}%)` : '';
+          process.stdout.write(`\r  ${path.basename(dest)} ${(bytes/1024/1024).toFixed(1)}MB${pct}  `);
         });
         res.pipe(file);
         file.on('finish', () => { file.close(); process.stdout.write(' done\n'); resolve(); });
         file.on('error', (err) => {
-          fs.existsSync(dest) && fs.unlinkSync(dest);
+          if (fs.existsSync(dest)) fs.unlinkSync(dest);
           reject(err);
         });
       }).on('error', (err) => {
-        fs.existsSync(dest) && fs.unlinkSync(dest);
-        if (attempt < retries - 1) {
-          setTimeout(() => download(url, dest, retries, attempt + 1).then(resolve).catch(reject), Math.pow(2, attempt) * 1000);
-        } else {
-          reject(err);
-        }
+        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+        if (attempt < retries - 1) return setTimeout(() => download(url, dest, retries, attempt + 1).then(resolve).catch(reject), Math.pow(2, attempt) * 1000);
+        reject(err);
       });
     };
     get(url);
   });
 }
 
-async function main() {
-  const sttDir = path.join(MODELS_DIR, 'stt', STT_MODEL);
-  const ttsDir = path.join(MODELS_DIR, 'tts');
-  const speakerDir = path.join(MODELS_DIR, 'speaker');
+async function downloadGroup(name, group) {
+  console.log(`[sttttsmodels] downloading ${name} models...`);
+  const regularFiles = group.files.filter(f => !group.chunked?.[f]);
+  const chunkedFiles = group.files.filter(f => group.chunked?.[f]);
 
-  console.log('[sttttsmodels] downloading STT models from GitHub...');
-  for (const file of STT_FILES) {
-    const dest = path.join(sttDir, file);
-    if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
-    await download(BASE + STT_PREFIX + file, dest);
-  }
+  await Promise.all(regularFiles.map(async (file) => {
+    const dest = path.join(group.dir, file);
+    if (fs.existsSync(dest) && fs.statSync(dest).size > 0) return;
+    await download(BASE + group.prefix + file, dest);
+  }));
 
-  console.log('[sttttsmodels] downloading TTS models from GitHub...');
-  for (const file of TTS_FILES) {
-    const dest = path.join(ttsDir, file);
+  for (const file of chunkedFiles) {
+    const dest = path.join(group.dir, file);
     if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
-    await download(BASE + TTS_PREFIX + file, dest);
-  }
-
-  console.log('[sttttsmodels] downloading speaker embedding model from GitHub...');
-  for (const file of SPEAKER_FILES) {
-    const dest = path.join(speakerDir, file);
-    if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
-    await download(BASE + SPEAKER_PREFIX + file, dest);
-  }
-
-  console.log('[sttttsmodels] downloading Qwen3.5-0.8B-ONNX from GitHub...');
-  const qwenDir = path.join(MODELS_DIR, 'qwen', 'onnx-community', 'Qwen3.5-0.8B-ONNX');
-  for (const file of QWEN_FILES) {
-    const dest = path.join(qwenDir, file);
-    if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
-    const parts = QWEN_CHUNKED_FILES[file];
-    if (parts) {
-      ensureDir(path.dirname(dest));
-      if (fs.existsSync(dest)) fs.unlinkSync(dest);
-      for (const part of parts) {
-        const chunkDest = dest + '.' + part;
-        await download(BASE + QWEN_PREFIX + file + '.' + part, chunkDest);
-        fs.appendFileSync(dest, fs.readFileSync(chunkDest));
-        fs.unlinkSync(chunkDest);
+    ensureDir(path.dirname(dest));
+    if (fs.existsSync(dest)) fs.unlinkSync(dest);
+    const parts = group.chunked[file];
+    await Promise.all(parts.map(async (part) => {
+      const chunkDest = dest + '.' + part;
+      if (!fs.existsSync(chunkDest) || fs.statSync(chunkDest).size === 0) {
+        await download(BASE + group.prefix + file + '.' + part, chunkDest);
       }
-      process.stdout.write(`  ${path.basename(dest)} assembled\n`);
-    } else {
-      await download(BASE + QWEN_PREFIX + file, dest);
+    }));
+    for (const part of parts) {
+      const chunkDest = dest + '.' + part;
+      fs.appendFileSync(dest, fs.readFileSync(chunkDest));
+      fs.unlinkSync(chunkDest);
     }
+    process.stdout.write(`  ${path.basename(dest)} assembled\n`);
   }
+}
 
+function parseModels(argv, env) {
+  const argFlag = argv.find(a => a.startsWith('--models='));
+  const envVal = env.STTTTS_MODELS;
+  const raw = argFlag ? argFlag.slice('--models='.length) : envVal;
+  if (!raw) return Object.keys(MODEL_GROUPS);
+  const requested = raw.split(',').map(s => s.trim()).filter(Boolean);
+  const invalid = requested.filter(m => !MODEL_GROUPS[m]);
+  if (invalid.length) {
+    console.error(`[sttttsmodels] unknown model(s): ${invalid.join(', ')}`);
+    console.error(`[sttttsmodels] available: ${Object.keys(MODEL_GROUPS).join(', ')}`);
+    process.exit(1);
+  }
+  return requested;
+}
+
+async function main() {
+  const selected = parseModels(process.argv.slice(2), process.env);
+  for (const name of selected) {
+    await downloadGroup(name, MODEL_GROUPS[name]);
+  }
   console.log('[sttttsmodels] all models ready.');
 }
 
